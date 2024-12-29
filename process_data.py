@@ -62,7 +62,7 @@ def calculate_rsi(data, column='returns', window=14):
     return rsi
 
 
-def process_sp500_data(start_date, end_date, n_lags, vol_lag, SMA_lags, rsi_window,ticker='^GSPC'):
+def process_sp500_data(start_date, end_date, n_lags, vol_lag, SMA_lags, rsi_window, ticker='^GSPC'):
     """
     Process S&P 500 data by downloading it, calculating returns, adding lagged features,
     calculating rolling volatility, calculating SMAs, flattening columns, and cleaning up the dataset.
@@ -74,31 +74,34 @@ def process_sp500_data(start_date, end_date, n_lags, vol_lag, SMA_lags, rsi_wind
     - n_lags (int): Number of lagged features to create.
     - vol_lag (int): Rolling window size for calculating volatility.
     - SMA_lags (int or list): Single value or list of window sizes for calculating SMAs.
-    - rsi_window (int): Rolling window size for calculating rsi.
+    - rsi_window (int): Rolling window size for calculating RSI.
 
     Returns:
     - pd.DataFrame: Processed DataFrame with cleaned and lagged features.
     """
     # Download the data
     sp_500 = yf.download(ticker, start=start_date, end=end_date)
+    
+    # Volume lag 1
+    sp_500['Volume_lag_1'] = sp_500['Volume'].shift(1)
 
     # Calculate daily returns
     sp_500['returns'] = sp_500['Adj Close'].pct_change()
 
-    # Calculate rolling volatility
-    sp_500[f'volatility_lag_{vol_lag}'] = sp_500['returns'].rolling(window=vol_lag).std()
+    # Calculate rolling volatility with a shift
+    sp_500[f'volatility_lag_{vol_lag}'] = sp_500['returns'].shift(1).rolling(window=vol_lag).std()
     
-    # Calculate RSI
-    sp_500[f'RSI_{rsi_window}'] = calculate_rsi(sp_500, column='returns', window=rsi_window)
+    # Calculate RSI with a shift
+    sp_500[f'RSI_{rsi_window}'] = calculate_rsi(sp_500.shift(1), column='returns', window=rsi_window)
 
-    # Calculate SMAs
+    # Calculate SMAs with a shift
     if isinstance(SMA_lags, int):
         SMA_lags = [SMA_lags]
     for lag in SMA_lags:
-        sp_500[f'SMA_{lag}'] = sp_500['returns'].rolling(window=lag).mean()
+        sp_500[f'SMA_{lag}'] = sp_500['returns'].shift(1).rolling(window=lag).mean()
 
     # Select relevant columns
-    sp_500 = sp_500[['returns', 'Volume', f'volatility_lag_{vol_lag}'] + [f'SMA_{lag}' for lag in SMA_lags] + [f'RSI_{rsi_window}']]
+    sp_500 = sp_500[['returns', 'Volume', 'Volume_lag_1', f'volatility_lag_{vol_lag}'] + [f'SMA_{lag}' for lag in SMA_lags] + [f'RSI_{rsi_window}']]
 
     # Create lagged features
     sp_500 = create_lagged_features(dataframe=sp_500, value_column='returns', n_lags=n_lags)
@@ -111,12 +114,13 @@ def process_sp500_data(start_date, end_date, n_lags, vol_lag, SMA_lags, rsi_wind
     sp_500 = sp_500.loc[:, ~sp_500.columns.str.contains("Ticker")]
 
     # Rename Volume column if needed
-    sp_500.rename(columns={"Volume_^GSPC": "volume"}, inplace=True)
+    sp_500.rename(columns={"Volume_^GSPC": "Volume"}, inplace=True)
 
     # Drop rows with NaN values
     sp_500.dropna(inplace=True)
 
     return sp_500
+
 
 def load_macro_data(start_date, end_date):
     """
