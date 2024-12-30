@@ -1,67 +1,66 @@
 import pandas as pd
 import yfinance as yf
 
-# def monthly_to_daily(dataframe):
-#     """
-#     Convert monthly data to daily data by forward-filling values.
-
-#     Parameters:
-#     - dataframe (pd.DataFrame): DataFrame with datetime index (monthly data).
-
-#     Returns:
-#     - pd.DataFrame: DataFrame with daily data.
-#     """
-#     # Ensure the date column is in datetime format
-#     dataframe.index = pd.to_datetime(dataframe.index)
-
-#     # Create daily date range covering the entire range of the input data
-#     daily_index = pd.date_range(start=dataframe.index.min(), end=dataframe.index.max(), freq='B')
-
-#     # Reindex to daily frequency and forward-fill the values
-#     daily_data = dataframe.reindex(daily_index, method='ffill')
-#     daily_data.index.name = "Date"
-
-#     return daily_data
-
-def create_lagged_features(dataframe, value_column, n_lags):
+def RDP(dataframe, lags):
     """
-    Create lagged features for a given value column in a DataFrame.
+    Compute the Relative Difference in Percentage (RDP) lagged for specified periods.
 
     Parameters:
-    - dataframe (pd.DataFrame): DataFrame with datetime index and the target value column.
-    - value_column (str): Column name of the values for which lagged features are created.
-    - n_lags (int): Number of lagged features to generate.
+    - dataframe (pd.DataFrame): The input DataFrame containing at least a 'Close' column.
+    - lags (list): A list of integers representing the lag periods for RDP computation.
 
     Returns:
-    - pd.DataFrame: DataFrame with lagged features added as new columns.
+    - pd.DataFrame: The input DataFrame with new columns for each computed RDP.
     """
-    for lag in range(1, n_lags + 1):
-        dataframe[f"Lag_{lag}"] = dataframe[value_column].shift(lag)
-    dataframe.dropna(inplace=True)  # Drop rows with NaN values caused by shifting
+    if 'Close' not in dataframe.columns:
+        raise ValueError("The input DataFrame must contain a 'Close' column.")
+
+    for i in range(len(lags)):
+        lag = lags[i] 
+        column_name = f'RDP_{lag}'
+        dataframe[column_name] = (dataframe['Close'].shift(lag - (i+1)*5) - dataframe['Close'].shift(lag)) / dataframe['Close'].shift(lag) * 100
+
     return dataframe
 
-def calculate_rsi(data, column='returns', window=14):
-    """
-    Calculate the Relative Strength Index (RSI) for a given data column.
+# def create_lagged_features(dataframe, value_column, n_lags):
+#     """
+#     Create lagged features for a given value column in a DataFrame.
 
-    Parameters:
-    - data (pd.DataFrame): DataFrame containing the data.
-    - column (str): Column for which RSI is calculated.
-    - window (int): Window size for RSI calculation.
+#     Parameters:
+#     - dataframe (pd.DataFrame): DataFrame with datetime index and the target value column.
+#     - value_column (str): Column name of the values for which lagged features are created.
+#     - n_lags (int): Number of lagged features to generate.
 
-    Returns:
-    - pd.Series: RSI values.
-    """
-    delta = data[column].diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=window).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=window).mean()
+#     Returns:
+#     - pd.DataFrame: DataFrame with lagged features added as new columns.
+#     """
+#     for lag in range(1, n_lags + 1):
+#         dataframe[f"Lag_{lag}"] = dataframe[value_column].shift(lag)
+#     dataframe.dropna(inplace=True)  # Drop rows with NaN values caused by shifting
+#     return dataframe
 
-    rs = gain / loss
-    rsi = 100 - (100 / (1 + rs))
-    return rsi
+# def calculate_rsi(data, column='returns', window=14):
+#     """
+#     Calculate the Relative Strength Index (RSI) for a given data column.
+
+#     Parameters:
+#     - data (pd.DataFrame): DataFrame containing the data.
+#     - column (str): Column for which RSI is calculated.
+#     - window (int): Window size for RSI calculation.
+
+#     Returns:
+#     - pd.Series: RSI values.
+#     """
+#     delta = data[column].diff()
+#     gain = (delta.where(delta > 0, 0)).rolling(window=window).mean()
+#     loss = (-delta.where(delta < 0, 0)).rolling(window=window).mean()
+
+#     rs = gain / loss
+#     rsi = 100 - (100 / (1 + rs))
+#     return rsi
 
 
-def process_sp500_data(start_date, end_date, n_lags, vol_lag, SMA_lags, rsi_window, ticker='^GSPC'):
+def process_sp500_data(start_date, end_date, lags, ticker='^GSPC'):
     """
     Process S&P 500 data by downloading it, calculating returns, adding lagged features,
     calculating rolling volatility, calculating SMAs, flattening columns, and cleaning up the dataset.
@@ -70,10 +69,7 @@ def process_sp500_data(start_date, end_date, n_lags, vol_lag, SMA_lags, rsi_wind
     - ticker (str): Stock ticker symbol (e.g., '^GSPC' for S&P 500).
     - start_date (str): Start date for the data download (YYYY-MM-DD).
     - end_date (str): End date for the data download (YYYY-MM-DD).
-    - n_lags (int): Number of lagged features to create.
-    - vol_lag (int): Rolling window size for calculating volatility.
-    - SMA_lags (int or list): Single value or list of window sizes for calculating SMAs.
-    - rsi_window (int): Rolling window size for calculating RSI.
+    - lags (list): Number of lagged features to create.
 
     Returns:
     - pd.DataFrame: Processed DataFrame with cleaned and lagged features.
@@ -81,29 +77,11 @@ def process_sp500_data(start_date, end_date, n_lags, vol_lag, SMA_lags, rsi_wind
     # Download the data
     sp_500 = yf.download(ticker, start=start_date, end=end_date)
     
-    # Volume lag 1
-    sp_500['Volume_lag_1'] = sp_500['Volume'].shift(1)
-
-    # Calculate daily returns
-    sp_500['returns'] = sp_500['Close'].pct_change()
-
-    # Calculate rolling volatility with a shift
-    sp_500[f'volatility_lag_{vol_lag}'] = sp_500['returns'].shift(1).rolling(window=vol_lag).std()
-    
-    # Calculate RSI with a shift
-    sp_500[f'RSI_{rsi_window}'] = calculate_rsi(sp_500.shift(1), column='returns', window=rsi_window)
-
-    # Calculate SMAs with a shift
-    if isinstance(SMA_lags, int):
-        SMA_lags = [SMA_lags]
-    for lag in SMA_lags:
-        sp_500[f'SMA_{lag}'] = sp_500['returns'].shift(1).rolling(window=lag).mean()
+    # Add the RDP columns
+    sp_500 = RDP(sp_500, lags)
 
     # Select relevant columns
-    sp_500 = sp_500[['Close', 'returns', 'Volume', 'Volume_lag_1', f'volatility_lag_{vol_lag}'] + [f'SMA_{lag}' for lag in SMA_lags] + [f'RSI_{rsi_window}']]
-
-    # Create lagged features
-    sp_500 = create_lagged_features(dataframe=sp_500, value_column='returns', n_lags=n_lags)
+    sp_500 = sp_500[['Close'] + [f'RDP_{lag}' for lag in lags]]
 
     # Flatten MultiIndex columns if they exist
     if isinstance(sp_500.columns, pd.MultiIndex):
@@ -113,59 +91,49 @@ def process_sp500_data(start_date, end_date, n_lags, vol_lag, SMA_lags, rsi_wind
     sp_500 = sp_500.loc[:, ~sp_500.columns.str.contains("Ticker")]
 
     # Rename Volume column if needed
-    sp_500.rename(columns={"Volume_^GSPC": "Volume", "Close_^GSPC": "Close"}, inplace=True)
+    sp_500.rename(columns={"Close_^GSPC": "Close"}, inplace=True)
 
     # Drop rows with NaN values
     sp_500.dropna(inplace=True)
 
-#     # Ensure the date column is in datetime format
-#     dataframe.index = pd.to_datetime(dataframe.index)
+    return sp_500
 
-#     # Create daily date range covering the entire range of the input data
-#     daily_index = pd.date_range(start=dataframe.index.min(), end=dataframe.index.max(), freq='B')
+# def create_lagged_features(dataframe, value_column, n_lags):
+#     """
+#     Create lagged features for a given value column in a DataFrame.
 
-#     # Reindex to daily frequency and forward-fill the values
-#     daily_data = dataframe.reindex(daily_index, method='ffill')
-#     daily_data.index.name = "Date"
+#     Parameters:
+#     - dataframe (pd.DataFrame): DataFrame with datetime index and the target value column.
+#     - value_column (str): Column name of the values for which lagged features are created.
+#     - n_lags (int): Number of lagged features to generate.
 
-#     return daily_data
+#     Returns:
+#     - pd.DataFrame: DataFrame with lagged features added as new columns.
+#     """
+#     for lag in range(1, n_lags + 1):
+#         dataframe[f"Lag_{lag}"] = dataframe[value_column].shift(lag)
+#     dataframe.dropna(inplace=True)  # Drop rows with NaN values caused by shifting
+#     return dataframe
 
-def create_lagged_features(dataframe, value_column, n_lags):
-    """
-    Create lagged features for a given value column in a DataFrame.
+# def calculate_rsi(data, column='returns', window=14):
+#     """
+#     Calculate the Relative Strength Index (RSI) for a given data column.
 
-    Parameters:
-    - dataframe (pd.DataFrame): DataFrame with datetime index and the target value column.
-    - value_column (str): Column name of the values for which lagged features are created.
-    - n_lags (int): Number of lagged features to generate.
+#     Parameters:
+#     - data (pd.DataFrame): DataFrame containing the data.
+#     - column (str): Column for which RSI is calculated.
+#     - window (int): Window size for RSI calculation.
 
-    Returns:
-    - pd.DataFrame: DataFrame with lagged features added as new columns.
-    """
-    for lag in range(1, n_lags + 1):
-        dataframe[f"Lag_{lag}"] = dataframe[value_column].shift(lag)
-    dataframe.dropna(inplace=True)  # Drop rows with NaN values caused by shifting
-    return dataframe
+#     Returns:
+#     - pd.Series: RSI values.
+#     """
+#     delta = data[column].diff()
+#     gain = (delta.where(delta > 0, 0)).rolling(window=window).mean()
+#     loss = (-delta.where(delta < 0, 0)).rolling(window=window).mean()
 
-def calculate_rsi(data, column='returns', window=14):
-    """
-    Calculate the Relative Strength Index (RSI) for a given data column.
-
-    Parameters:
-    - data (pd.DataFrame): DataFrame containing the data.
-    - column (str): Column for which RSI is calculated.
-    - window (int): Window size for RSI calculation.
-
-    Returns:
-    - pd.Series: RSI values.
-    """
-    delta = data[column].diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=window).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=window).mean()
-
-    rs = gain / loss
-    rsi = 100 - (100 / (1 + rs))
-    return rsi
+#     rs = gain / loss
+#     rsi = 100 - (100 / (1 + rs))
+#     return rsi
 
 
 # def process_sp500_data(start_date, end_date, n_lags, vol_lag, SMA_lags, rsi_window, ticker='^GSPC'):
@@ -227,66 +195,6 @@ def calculate_rsi(data, column='returns', window=14):
 
 #     return sp_500
 
-def process_sp500_data(start_date, end_date, n_lags, vol_lag, SMA_lags, rsi_window, ticker='^GSPC'):
-    """
-    Process S&P 500 data by downloading it, calculating returns, adding lagged features,
-    calculating rolling volatility, calculating SMAs, flattening columns, and cleaning up the dataset.
-
-    Parameters:
-    - ticker (str): Stock ticker symbol (e.g., '^GSPC' for S&P 500).
-    - start_date (str): Start date for the data download (YYYY-MM-DD).
-    - end_date (str): End date for the data download (YYYY-MM-DD).
-    - n_lags (int): Number of lagged features to create.
-    - vol_lag (int): Rolling window size for calculating volatility.
-    - SMA_lags (int or list): Single value or list of window sizes for calculating SMAs.
-    - rsi_window (int): Rolling window size for calculating RSI.
-
-    Returns:
-    - pd.DataFrame: Processed DataFrame with cleaned and lagged features.
-    """
-    # Download the data
-    sp_500 = yf.download(ticker, start=start_date, end=end_date)
-    
-    # Volume lag 1
-    sp_500['Volume_lag_1'] = sp_500['Volume'].shift(1)
-
-    # Calculate daily returns
-    sp_500['returns'] = sp_500['Close'].pct_change()
-
-    # Calculate rolling volatility with a shift
-    sp_500[f'volatility_lag_{vol_lag}'] = sp_500['returns'].shift(1).rolling(window=vol_lag).std()
-    
-    # Calculate RSI with a shift
-    sp_500[f'RSI_{rsi_window}'] = calculate_rsi(sp_500.shift(1), column='returns', window=rsi_window)
-
-    # Calculate SMAs with a shift
-    if isinstance(SMA_lags, int):
-        SMA_lags = [SMA_lags]
-    for lag in SMA_lags:
-        sp_500[f'SMA_{lag}'] = sp_500['returns'].shift(1).rolling(window=lag).mean()
-
-    # Select relevant columns
-    sp_500 = sp_500[['Close', 'returns', 'Volume', 'Volume_lag_1', f'volatility_lag_{vol_lag}'] + [f'SMA_{lag}' for lag in SMA_lags] + [f'RSI_{rsi_window}']]
-
-    # Create lagged features
-    sp_500 = create_lagged_features(dataframe=sp_500, value_column='returns', n_lags=n_lags)
-
-    # Flatten MultiIndex columns if they exist
-    if isinstance(sp_500.columns, pd.MultiIndex):
-        sp_500.columns = ['_'.join(filter(None, col)) for col in sp_500.columns]
-
-    # Remove columns containing "Ticker"
-    sp_500 = sp_500.loc[:, ~sp_500.columns.str.contains("Ticker")]
-
-    # Rename Volume column if needed
-    sp_500.rename(columns={"Volume_^GSPC": "Volume", "Close_^GSPC": "Close"}, inplace=True)
-
-    # Drop rows with NaN values
-    sp_500.dropna(inplace=True)
-
-    return sp_500
-
-
 # def load_macro_data(start_date, end_date):
 #     """
 #     Load macroeconomic data for unemployment rate (UNRATE) and CPI.
@@ -347,24 +255,27 @@ def process_sp500_data(start_date, end_date, n_lags, vol_lag, SMA_lags, rsi_wind
 #     merged_df.dropna(inplace=True)  # Drop rows with NaN values after merging
 #     return merged_df
 
-# Example usage
+
 if __name__ == "__main__":
     # Parameters
     start_date = "2010-01-01"
     end_date = "2024-01-01"
+    lags = [5,10,15,20]
     # start_date = "1989-05-24"
     # end_date = "1993-10-08"
-    n_lags = 3
-    vol_lag = 10
-    SMA_lags = [10, 20]
-    rsi_window = 14
+    # n_lags = 3
+    # vol_lag = 10
+    # SMA_lags = [10, 20]
+    # rsi_window = 14
 
     # # Load macro data
     # macro_data = load_macro_data(start_date=start_date, end_date=end_date)
     # print("Macro data loaded.")
 
     # Process S&P 500 data
-    sp500_data = process_sp500_data(start_date=start_date, end_date=end_date, n_lags=n_lags, vol_lag=vol_lag, SMA_lags=SMA_lags, rsi_window=rsi_window)
+    # sp500_data = process_sp500_data(start_date=start_date, end_date=end_date, n_lags=n_lags, vol_lag=vol_lag, SMA_lags=SMA_lags, rsi_window=rsi_window)
+    # print("S&P 500 data processed.")
+    sp500_data = process_sp500_data(start_date=start_date, end_date=end_date, lags=lags)
     print("S&P 500 data processed.")
 
     # # Merge the dataframes
