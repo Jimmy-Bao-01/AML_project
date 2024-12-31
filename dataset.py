@@ -78,8 +78,8 @@ if __name__ == "__main__":
 
     # Process S&P 500 data
     sp500_data = process_sp500_data(start_date=start_date, end_date=end_date, lags=lags)
-    print("S&P 500 data processed.")
+    print("S&P 500 data processed with RDP.")
 
     # Save the processed data
-    sp500_data.to_csv("data/processed_data.csv", index=True)
-    print("Data saved as 'processed_data.csv'.")
+    sp500_data.to_csv("data/processed_data_rdp.csv", index=True)
+    print("Data saved as 'processed_data_rdp.csv'.")

@@ -198,7 +198,7 @@ def process_sp500_data(start_date, end_date, n_lags, vol_lag, SMA_lags, rsi_wind
 
 if __name__ == "__main__":
     # Parameters
-    start_date = "2010-01-01"
+    start_date = "2005-01-01"
     end_date = "2024-01-01"
     # lags = [5,10,15,20]
     # start_date = "1989-05-24"
