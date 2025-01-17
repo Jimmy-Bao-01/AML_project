@@ -1,6 +1,6 @@
 # README
 
-## Project Title
+## Comparative study for the prediction of a S&P 500 Index
 **Financial Time Series Prediction using ARIMAX, Support Vector Regression, and Backpropagation Neural Networks**
 
 ## Description
@@ -18,7 +18,7 @@ This project focuses on predicting the normalized Relative Difference Percentage
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-repo-name.git
+   git clone https://github.com/Jimmy-Bao-01/AML_project
    cd your-repo-name
    ```
 2. Create a virtual environment (optional but recommended):
@@ -38,80 +38,18 @@ This project focuses on predicting the normalized Relative Difference Percentage
   - **RDP-5, RDP-10, RDP-15, RDP-20**: Lagged Relative Difference Percentages.
   - **EMA100**: 100-day Exponential Moving Average.
 
-## Usage
-
-### Training the Models
-1. **ARIMAX**:
-   ```python
-   # Combine training and validation data
-   y_train_arimax = pd.concat([train_data[target], val_data[target]], axis=0).reset_index(drop=True)
-   X_train_arimax = pd.concat([train_data[features], val_data[features]], axis=0).reset_index(drop=True)
-   
-   # Fit the ARIMAX model
-   arimax_model = sm.tsa.ARIMA(endog=y_train_arimax, exog=X_train_arimax, order=(p, d, q)).fit()
-   ```
-
-2. **Support Vector Regression (SVR)**:
-   ```python
-   from sklearn.svm import SVR
-   
-   svr_model = SVR(kernel='rbf', C=1.0, epsilon=0.1)
-   svr_model.fit(X_train, y_train)
-   ```
-
-3. **Backpropagation Neural Network**:
-   ```python
-   from tensorflow.keras.models import Sequential
-   from tensorflow.keras.layers import Dense
-   from tensorflow.keras.optimizers import Adam
-   
-   model = Sequential([
-       Dense(64, input_dim=X_train.shape[1], activation='relu'),
-       Dense(32, activation='relu'),
-       Dense(1, activation='linear')
-   ])
-   model.compile(optimizer=Adam(learning_rate=0.001), loss=nmse_metric, metrics=[nmse_metric])
-   model.fit(X_train, y_train, validation_data=(X_val, y_val), epochs=50, batch_size=32)
-   ```
-
-### Evaluation
-After training, evaluate the models on the test set using metrics like:
-- Mean Squared Error (MSE)
-- Normalized Mean Squared Error (NMSE)
-- R-squared (R²)
-
-```python
-# Example for Backpropagation Neural Network
-from sklearn.metrics import mean_squared_error, r2_score
-
-predictions = model.predict(X_test).flatten()
-mse = mean_squared_error(y_test, predictions)
-r2 = r2_score(y_test, predictions)
-nmse = mse / np.var(y_test)
-
-print(f"Test MSE: {mse:.4f}")
-print(f"Test R²: {r2:.4f}")
-print(f"Test NMSE: {nmse:.4f}")
-```
-
-## Results
-- **ARIMAX**: Provides interpretable results by modeling linear dependencies and exogenous variables.
-- **SVR**: Captures non-linear patterns effectively.
-- **Backpropagation**: Handles complex, non-linear relationships and achieves the best performance in terms of NMSE.
 
 ## File Structure
 ```
 project-root/
-|-- data/                # Raw and processed datasets
+|-- data/                # Dataset files
 |-- models/              # Trained model files
 |-- notebooks/           # Jupyter notebooks for exploration
 |-- src/                 # Source code
-|-- requirements.txt     # Dependencies
+|   |-- utils.py         # Utility functions
+|-- requirements.txt     # Python dependencies
 |-- README.md            # Project documentation
 ```
-
-## License
-This project is licensed under the MIT License. See the LICENSE file for details.
 
 ## Acknowledgments
 - Data sourced using the `yfinance` library.
