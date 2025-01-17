@@ -41,12 +41,11 @@ This project focuses on predicting the normalized Relative Difference Percentage
 
 ## File Structure
 ```
-project-root/
+Jimmy-Bao-01/AML_project/
 |-- data/                # Dataset files
 |-- models/              # Trained model files
 |-- notebooks/           # Jupyter notebooks for exploration
-|-- src/                 # Source code
-|   |-- utils.py         # Utility functions
+|-- utils.py             # Utility functions
 |-- requirements.txt     # Python dependencies
 |-- README.md            # Project documentation
 ```
