@@ -43,7 +43,7 @@ This project focuses on predicting the normalized Relative Difference Percentage
 ```
 Jimmy-Bao-01/AML_project/
 |-- data/                # Dataset files
-|-- datasets.py          # Processing the raw dataset
+|-- datasets.py          # Processing the raw data
 |-- models.py            # Trained model files
 |-- notebooks.ipynb      # Jupyter notebooks for exploration
 |-- utils.py             # Utility functions
