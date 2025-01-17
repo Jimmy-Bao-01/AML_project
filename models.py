@@ -3,9 +3,9 @@ import matplotlib.pyplot as plt
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 from sklearn.svm import SVR
 from sklearn.metrics import mean_squared_error, r2_score
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense
-from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.models import Sequential # type: ignore
+from tensorflow.keras.layers import Dense # type: ignore
+from tensorflow.keras.optimizers import Adam # type: ignore
 from itertools import product
 
 from utils import nmse_metric
